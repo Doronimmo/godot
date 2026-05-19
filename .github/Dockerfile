@@ -4,6 +4,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --user scons && \
-    echo "$HOME/.local/bin" >> $GITHUB_PATH
+RUN pip3 install --user scons
+ENV PATH="/root/.local/bin:${PATH}"
 WORKDIR /workspace
