@@ -1,14 +1,14 @@
 name: Build Godot Release for PortMaster (Native ARM64)
-on:  
-  workflow_dispatch:  
-  push:    
-    tags:      
+on:
+  workflow_dispatch:
+  push:
+    tags:
       - 'v*'
 
-env:  
+env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SCONS_CACHE: ${{ github.workspace }}/.scons-cache
-  SCONS_CACHE_LIMIT: 7168 
+  SCONS_CACHE_LIMIT: 7168
 
 permissions:
   contents: write
@@ -18,7 +18,6 @@ jobs:
   build_portmaster:
     name: Build Godot Binaries
     runs-on: ubuntu-24.04-arm
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -46,9 +45,7 @@ jobs:
             ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
-            pip3 install --user scons > /dev/null 2>&1
-            export PATH=$HOME/.local/bin:$PATH
-            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+            python3 -m SCons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
               production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
               deprecated=no minizip=yes module_lightmapper_rd_enabled=no \
               disable_exceptions=yes disable_rtti=yes
@@ -72,9 +69,7 @@ jobs:
             ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
-            pip3 install --user scons > /dev/null 2>&1
-            export PATH=$HOME/.local/bin:$PATH
-            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+            python3 -m SCons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
               production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
               deprecated=no minizip=yes \
               module_basis_universal_enabled=yes module_msdfgen_enabled=yes module_svg_enabled=yes \
@@ -102,9 +97,7 @@ jobs:
             ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
-            pip3 install --user scons > /dev/null 2>&1
-            export PATH=$HOME/.local/bin:$PATH
-            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+            python3 -m SCons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
               production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
               disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes \
               module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
@@ -132,5 +125,5 @@ jobs:
 
       - uses: actions/upload-artifact@v5
         with:
-          name: godot_optimised.aarch64     
+          name: godot_optimised.aarch64
           path: bin/godot_optimised.aarch64
