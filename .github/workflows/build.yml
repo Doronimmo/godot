@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-scons-v1-
 
       - name: Build Local Builder Image
-        run: docker build -t local-builder .
+        run: docker build -f .github/Dockerfile -t local-builder .
 
       - name: Compile 3D Full
         run: |
