@@ -33,17 +33,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-scons-v1-
 
+      - name: Build Local Builder Image
+        run: docker build -t local-builder .
+
       - name: Compile 3D Full
         run: |
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace \
-            -e DEBIAN_FRONTEND=noninteractive \
-            -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
-            /bin/bash -c "pip3 install --user scons && export PYTHONPATH=/tmp/.local/lib/python3.12/site-packages:\$PYTHONPATH && python3 -m SCons -j\$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no deprecated=no minizip=yes module_lightmapper_rd_enabled=no disable_exceptions=yes disable_rtti=yes"
+            local-builder \
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no deprecated=no minizip=yes module_lightmapper_rd_enabled=no disable_exceptions=yes disable_rtti=yes
 
       - name: Prepare 3D Full
         run: |
@@ -56,12 +57,10 @@ jobs:
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace \
-            -e DEBIAN_FRONTEND=noninteractive \
-            -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
-            /bin/bash -c "pip3 install --user scons && export PYTHONPATH=/tmp/.local/lib/python3.12/site-packages:\$PYTHONPATH && python3 -m SCons -j\$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no deprecated=no minizip=yes module_basis_universal_enabled=yes module_msdfgen_enabled=yes module_svg_enabled=yes module_text_server_advanced_enabled=yes module_gltf_enabled=no module_gridmap_enabled=no module_openxr_enabled=no module_raycast_enabled=no module_lightmapper_rd_enabled=no disable_exceptions=yes disable_rtti=yes"
+            local-builder \
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no deprecated=no minizip=yes module_basis_universal_enabled=yes module_msdfgen_enabled=yes module_svg_enabled=yes module_text_server_advanced_enabled=yes module_gltf_enabled=no module_gridmap_enabled=no module_openxr_enabled=no module_raycast_enabled=no module_lightmapper_rd_enabled=no disable_exceptions=yes disable_rtti=yes
 
       - name: Prepare Compat
         run: |
@@ -74,12 +73,10 @@ jobs:
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace \
-            -e DEBIAN_FRONTEND=noninteractive \
-            -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
-            /bin/bash -c "pip3 install --user scons && export PYTHONPATH=/tmp/.local/lib/python3.12/site-packages:\$PYTHONPATH && python3 -m SCons -j\$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no module_text_server_fallback_enabled=yes disable_3d=yes disable_exceptions=yes disable_rtti=yes"
+            local-builder \
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no module_text_server_fallback_enabled=yes disable_3d=yes disable_exceptions=yes disable_rtti=yes
 
       - name: Prepare Optimised
         run: |
