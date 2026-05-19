@@ -1,12 +1,6 @@
 name: Build Godot Release for PortMaster (Native ARM64)
 on:  
   workflow_dispatch:  
-    inputs:
-      force_rebuild:
-        description: 'Force rebuild of Docker images'
-        required: false
-        default: false
-        type: boolean
   push:    
     tags:      
       - 'v*'
@@ -15,76 +9,19 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SCONS_CACHE: ${{ github.workspace }}/.scons-cache
   SCONS_CACHE_LIMIT: 7168 
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/portmaster-builder
 
 permissions:
   contents: write
-  packages: write
   actions: write
-  checks: write
 
 jobs:
-  build-builder-image:
-    name: Build Builder Image (aarch64)
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check if image exists
-        id: check-image
-        run: |
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest"
-          if docker buildx imagetools inspect $IMAGE_TAG > /dev/null 2>&1; then
-            echo "image_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "image_exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push builder image
-        if: steps.check-image.outputs.image_exists == 'false' || github.event.inputs.force_rebuild == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: .github/docker/pm_dockerfile.aarch64
-          platforms: linux/arm64
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest
-          build-args: |
-            BASE_IMAGE=arm64v8/ubuntu:20.04
-            SDL_VERSION=2.32.0
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   build_portmaster:
     name: Build Godot Binaries
-    needs: build-builder-image
     runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create SCons Cache Directory
         run: mkdir -p ${{ github.workspace }}/.scons-cache
@@ -106,7 +43,7 @@ jobs:
             -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
             pip3 install --user scons > /dev/null 2>&1
@@ -123,7 +60,7 @@ jobs:
           strip $(ls godot.linuxbsd.template_release.arm64*)
           mv $(ls godot.linuxbsd.template_release.arm64*) godot_3d.aarch64
 
-      - name: Compile Compat
+      - name: Compile Compat (Maximum 2D Compatibility)
         run: |
           docker run -i --rm \
             -v "$PWD":/workspace \
@@ -132,7 +69,7 @@ jobs:
             -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
             pip3 install --user scons > /dev/null 2>&1
@@ -153,7 +90,7 @@ jobs:
           strip $(ls godot.linuxbsd.template_release.arm64*)
           mv $(ls godot.linuxbsd.template_release.arm64*) godot_compat.aarch64
 
-      - name: Compile Optimised
+      - name: Compile Optimised (Pure Speed 2D)
         run: |
           docker run -i --rm \
             -v "$PWD":/workspace \
@@ -162,7 +99,7 @@ jobs:
             -e HOME=/tmp \
             -e SCONS_CACHE=/workspace/.scons-cache \
             --user $(id -u):$(id -g) \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            ghcr.io/monkeyx-net/portmaster-build-templates/portmaster-builder:aarch64-latest \
             /bin/bash -s << 'EOF'
             set -e
             pip3 install --user scons > /dev/null 2>&1
