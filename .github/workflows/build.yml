@@ -37,7 +37,7 @@ jobs:
             production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
             deprecated=no minizip=no module_basis_universal_enabled=no module_gltf_enabled=no \
             module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no \
-            module_raycast_enabled=no
+            module_raycast_enabled=no module_lightmapper_rd_enabled=no
 
       - name: Prepare Compat
         run: |
@@ -53,7 +53,8 @@ jobs:
             disable_advanced_gui=yes deprecated=no minizip=no module_basis_universal_enabled=no \
             module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
             module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no \
-            module_text_server_advanced_enabled=no module_text_server_fallback_enabled=yes
+            module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
+            module_text_server_fallback_enabled=yes
 
       - name: Prepare Optimised
         run: |
