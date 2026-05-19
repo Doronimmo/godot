@@ -1,0 +1,60 @@
+name: Build Godot Release for PortMaster (Native ARM64)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-portmaster:
+    runs-on: ubuntu-22.04-arm
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Native Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config squashfs-tools python3-pip \
+            libx11-dev libxcursor-dev libxinerama-dev \
+            libgl1-mesa-dev libasound2-dev libpulse-dev \
+            libudev-dev libxi-dev libxrandr-dev
+      - name: Install SCons via Pip
+        run: |
+          pip3 install --user scons
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+      - name: Set up SCons Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/scons
+          key: ${{ runner.os }}-scons-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scons-${{ github.ref }}-
+            ${{ runner.os }}-scons-
+      - name: Compile Godot Engine Natively
+        run: |
+          scons -j$(nproc) \
+            platform=linuxbsd \
+            arch=arm64 \
+            target=template_release \
+            optimize=speed \
+            production=yes \
+            lto=full \
+            disable_path_overrides=no \
+            use_static_cpp=yes
+      - name: Strip Debug Symbols and Prepare Binary
+        run: |
+          cd bin/
+          BINARY_NAME=$(ls godot.linuxbsd.template_release.arm64*)
+          strip "$BINARY_NAME"
+          mv "$BINARY_NAME" godot.aarch64
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot.aarch64
+          path: bin/godot.aarch64
+          if-no-files-found: error
