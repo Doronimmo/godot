@@ -1,6 +1,12 @@
 name: Build Godot Release for PortMaster (Native ARM64)
 on:  
   workflow_dispatch:  
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild of Docker images'
+        required: false
+        default: false
+        type: boolean
   push:    
     tags:      
       - 'v*'
@@ -10,15 +16,75 @@ env:
   SCONS_CACHE: ${{ github.workspace }}/.scons-cache
   SCONS_CACHE_LIMIT: 7168 
   REGISTRY: ghcr.io
-  IMAGE_NAME: monkeyx-net/portmaster-build-templates/portmaster-builder
+  IMAGE_NAME: ${{ github.repository }}/portmaster-builder
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+  checks: write
 
 jobs:
-  build_portmaster:
+  build-builder-image:
+    name: Build Builder Image (aarch64)
     runs-on: ubuntu-24.04-arm
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image exists
+        id: check-image
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest"
+          if docker buildx imagetools inspect $IMAGE_TAG > /dev/null 2>&1; then
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push builder image
+        if: steps.check-image.outputs.image_exists == 'false' || github.event.inputs.force_rebuild == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .github/docker/pm_dockerfile.aarch64
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest
+          build-args: |
+            BASE_IMAGE=arm64v8/ubuntu:20.04
+            SDL_VERSION=2.32.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build_portmaster:
+    name: Build Godot Binaries
+    needs: build-builder-image
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create SCons Cache Directory
         run: mkdir -p ${{ github.workspace }}/.scons-cache
@@ -33,7 +99,7 @@ jobs:
 
       - name: Compile 3D Full
         run: |
-          docker run --rm \
+          docker run -i --rm \
             -v "$PWD":/workspace \
             -w /workspace \
             -e DEBIAN_FRONTEND=noninteractive \
@@ -42,13 +108,14 @@ jobs:
             --user $(id -u):$(id -g) \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
             /bin/bash -s << 'EOF'
+            set -e
             pip3 install --user scons > /dev/null 2>&1
             export PATH=$HOME/.local/bin:$PATH
             scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
               production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
               deprecated=no minizip=yes module_lightmapper_rd_enabled=no \
               disable_exceptions=yes disable_rtti=yes
-          EOF
+            EOF
 
       - name: Prepare 3D Full
         run: |
@@ -58,7 +125,7 @@ jobs:
 
       - name: Compile Compat
         run: |
-          docker run --rm \
+          docker run -i --rm \
             -v "$PWD":/workspace \
             -w /workspace \
             -e DEBIAN_FRONTEND=noninteractive \
@@ -67,15 +134,18 @@ jobs:
             --user $(id -u):$(id -g) \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
             /bin/bash -s << 'EOF'
+            set -e
             pip3 install --user scons > /dev/null 2>&1
             export PATH=$HOME/.local/bin:$PATH
             scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
               production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-              deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no \
-              module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no \
+              deprecated=no minizip=yes \
+              module_basis_universal_enabled=yes module_msdfgen_enabled=yes module_svg_enabled=yes \
+              module_text_server_advanced_enabled=yes \
+              module_gltf_enabled=no module_gridmap_enabled=no module_openxr_enabled=no \
               module_raycast_enabled=no module_lightmapper_rd_enabled=no \
               disable_exceptions=yes disable_rtti=yes
-          EOF
+            EOF
 
       - name: Prepare Compat
         run: |
@@ -85,7 +155,7 @@ jobs:
 
       - name: Compile Optimised
         run: |
-          docker run --rm \
+          docker run -i --rm \
             -v "$PWD":/workspace \
             -w /workspace \
             -e DEBIAN_FRONTEND=noninteractive \
@@ -94,6 +164,7 @@ jobs:
             --user $(id -u):$(id -g) \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
             /bin/bash -s << 'EOF'
+            set -e
             pip3 install --user scons > /dev/null 2>&1
             export PATH=$HOME/.local/bin:$PATH
             scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
@@ -104,7 +175,7 @@ jobs:
               module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
               module_text_server_fallback_enabled=yes disable_3d=yes \
               disable_exceptions=yes disable_rtti=yes
-          EOF
+            EOF
 
       - name: Prepare Optimised
         run: |
