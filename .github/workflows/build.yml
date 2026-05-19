@@ -38,7 +38,7 @@ jobs:
         run: |
           scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
             production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            deprecated=no minizip=no module_lightmapper_rd_enabled=no
+            deprecated=no minizip=yes module_lightmapper_rd_enabled=no
 
       - name: Prepare 3D Full
         run: |
@@ -50,7 +50,7 @@ jobs:
         run: |
           scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
             production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            deprecated=no minizip=no module_basis_universal_enabled=no module_gltf_enabled=no \
+            deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no \
             module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no \
             module_raycast_enabled=no module_lightmapper_rd_enabled=no
 
@@ -64,7 +64,7 @@ jobs:
         run: |
           scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
             production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            disable_advanced_gui=yes deprecated=no minizip=no module_basis_universal_enabled=no \
+            disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes \
             module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
             module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no \
             module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
