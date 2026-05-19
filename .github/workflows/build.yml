@@ -8,37 +8,47 @@ on:
 env:  
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SCONS_CACHE: ${{ github.workspace }}/.scons-cache
+  SCONS_CACHE_LIMIT: 7168 
+  REGISTRY: ghcr.io
+  IMAGE_NAME: monkeyx-net/portmaster-build-templates/portmaster-builder
 
 jobs:
   build_portmaster:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config squashfs-tools python3-pip \
-            libx11-dev libxcursor-dev libxinerama-dev libgl1-mesa-dev libasound2-dev \
-            libpulse-dev libudev-dev libxi-dev libxrandr-dev \
-            libwayland-dev libwayland-bin wayland-protocols libxkbcommon-dev
+      - name: Create SCons Cache Directory
+        run: mkdir -p ${{ github.workspace }}/.scons-cache
 
-      - run: |
-          pip3 install --user scons
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
-      - uses: actions/cache@v5
+      - name: Restore SCons Cache
+        uses: actions/cache@v5
         with:
-          path: ~/.cache/scons
+          path: ${{ github.workspace }}/.scons-cache
           key: ${{ runner.os }}-scons-v1-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-scons-v1-
 
       - name: Compile 3D Full
         run: |
-          scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
-            production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            deprecated=no minizip=yes module_lightmapper_rd_enabled=no
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e HOME=/tmp \
+            -e SCONS_CACHE=/workspace/.scons-cache \
+            --user $(id -u):$(id -g) \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            /bin/bash -s << 'EOF'
+            pip3 install --user scons > /dev/null 2>&1
+            export PATH=$HOME/.local/bin:$PATH
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+              production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
+              deprecated=no minizip=yes module_lightmapper_rd_enabled=no \
+              disable_exceptions=yes disable_rtti=yes
+          EOF
 
       - name: Prepare 3D Full
         run: |
@@ -48,11 +58,24 @@ jobs:
 
       - name: Compile Compat
         run: |
-          scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
-            production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no \
-            module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no \
-            module_raycast_enabled=no module_lightmapper_rd_enabled=no
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e HOME=/tmp \
+            -e SCONS_CACHE=/workspace/.scons-cache \
+            --user $(id -u):$(id -g) \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            /bin/bash -s << 'EOF'
+            pip3 install --user scons > /dev/null 2>&1
+            export PATH=$HOME/.local/bin:$PATH
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+              production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
+              deprecated=no minizip=yes module_basis_universal_enabled=yes module_gltf_enabled=no \
+              module_gridmap_enabled=no module_msdfgen_enabled=no module_openxr_enabled=no \
+              module_raycast_enabled=no module_lightmapper_rd_enabled=no \
+              disable_exceptions=yes disable_rtti=yes
+          EOF
 
       - name: Prepare Compat
         run: |
@@ -62,14 +85,26 @@ jobs:
 
       - name: Compile Optimised
         run: |
-          scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
-            production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
-            disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes \
-            module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
-            module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no \
-            module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
-            module_text_server_fallback_enabled=yes \
-            disable_3d=yes
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e HOME=/tmp \
+            -e SCONS_CACHE=/workspace/.scons-cache \
+            --user $(id -u):$(id -g) \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:aarch64-latest \
+            /bin/bash -s << 'EOF'
+            pip3 install --user scons > /dev/null 2>&1
+            export PATH=$HOME/.local/bin:$PATH
+            scons -j$(nproc) platform=linuxbsd arch=arm64 target=template_release optimize=speed \
+              production=yes lto=full disable_path_overrides=no use_static_cpp=yes tools=no \
+              disable_advanced_gui=yes deprecated=no minizip=yes module_basis_universal_enabled=yes \
+              module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
+              module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no \
+              module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
+              module_text_server_fallback_enabled=yes disable_3d=yes \
+              disable_exceptions=yes disable_rtti=yes
+          EOF
 
       - name: Prepare Optimised
         run: |
@@ -77,17 +112,17 @@ jobs:
           strip $(ls godot.linuxbsd.template_release.arm64*)
           mv $(ls godot.linuxbsd.template_release.arm64*) godot_optimised.aarch64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: godot_3d.aarch64
           path: bin/godot_3d.aarch64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: godot_compat.aarch64
           path: bin/godot_compat.aarch64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: godot_optimised.aarch64     
           path: bin/godot_optimised.aarch64
