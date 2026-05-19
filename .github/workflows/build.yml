@@ -68,7 +68,8 @@ jobs:
             module_gltf_enabled=no module_gridmap_enabled=no module_msdfgen_enabled=no \
             module_openxr_enabled=no module_raycast_enabled=no module_svg_enabled=no \
             module_lightmapper_rd_enabled=no module_text_server_advanced_enabled=no \
-            module_text_server_fallback_enabled=yes
+            module_text_server_fallback_enabled=yes \
+            disable_3d=yes
 
       - name: Prepare Optimised
         run: |
